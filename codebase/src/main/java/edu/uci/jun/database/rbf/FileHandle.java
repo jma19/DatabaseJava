@@ -11,7 +11,6 @@ import java.util.Iterator;
 public class FileHandle implements Iterable<Page>, Closeable {
 
     private RandomAccessFile randomAccessFile;
-
     private String fileName;
 
     public FileHandle(String fileName) {
@@ -32,6 +31,14 @@ public class FileHandle implements Iterable<Page>, Closeable {
         this.randomAccessFile.close();
     }
 
+    public byte[] readPage(int pageNum) {
+        if (pageNum > getCurrentPageNum()) {
+            throw new PageFileException(String.format("fail to read page due to outbound page number %d", pageNum));
+        }
+        Page page = new Page(randomAccessFile.getChannel(), pageNum, true);
+        return page.readBytes();
+    }
+
     public boolean writePage(int pageNum, byte[] data) {
         Page page = new Page(randomAccessFile.getChannel(), pageNum, true);
         page.writeBytes(pageNum * Page.pageSize, Page.pageSize, data);
@@ -44,11 +51,11 @@ public class FileHandle implements Iterable<Page>, Closeable {
      * @return
      */
     public boolean appendPage(byte[] data) {
-        int pageNum = getPageNum();
+        int pageNum = getCurrentPageNum();
         return writePage(pageNum + 1, data);
     }
 
-    public int getPageNum() {
+    public int getCurrentPageNum() {
         try {
             randomAccessFile.seek(randomAccessFile.length());
             long position = randomAccessFile.getFilePointer();
@@ -58,8 +65,29 @@ public class FileHandle implements Iterable<Page>, Closeable {
         }
     }
 
+    public RandomAccessFile getRandomAccessFile() {
+        return randomAccessFile;
+    }
+
     @Override
     public Iterator<Page> iterator() {
-        return null;
+        return new PageIterator();
     }
+
+    class PageIterator implements Iterator<Page> {
+        private int currPageNum = 0;
+
+        @Override
+        public boolean hasNext() {
+            int currentPageNum = getCurrentPageNum();
+            return currPageNum <= currentPageNum;
+        }
+
+        @Override
+        public Page next() {
+            return new Page(randomAccessFile.getChannel(), currPageNum, true);
+        }
+    }
+
 }
+

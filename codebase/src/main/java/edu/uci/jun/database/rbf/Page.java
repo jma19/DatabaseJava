@@ -7,8 +7,6 @@ import java.nio.ByteBuffer;
 
 /**
  * General-purpose wrapper for interacting with the memory-mapped bytes on a page.
- * <p>
- * YOU SHOULD NOT NEED TO CHANGE ANY OF THE CODE IN THIS PACKAGE.
  */
 public class Page {
     public static final int pageSize = 4096;
@@ -93,7 +91,7 @@ public class Page {
     }
 
     /**
-     * Read all the bytes in file.
+     * Read all the bytes.
      *
      * @return a new byte array with all the bytes in the file
      */
