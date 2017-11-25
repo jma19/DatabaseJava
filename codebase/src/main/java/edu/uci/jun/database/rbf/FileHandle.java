@@ -30,9 +30,13 @@ public class FileHandle implements Iterable<Page>, Closeable {
     }
 
     @Override
-    public void close() throws IOException {
-        this.randomAccessFile.close();
-        isOpen = false;
+    public void close() {
+        try {
+            this.randomAccessFile.close();
+            isOpen = false;
+        } catch (IOException e) {
+            throw new PageFileException("fail to close File: " + e.getMessage());
+        }
     }
 
     public byte[] readPage(int pageNum) {

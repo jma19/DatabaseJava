@@ -15,7 +15,16 @@ public abstract class DataFiled implements Comparable {
      * An enum with the current supported types.
      */
     public enum Types {
-        BOOL, INT, FLOAT, STRING
+        INT(1), FLOAT(2), STRING(3), BOOL(4);
+        int val;
+
+        Types(int val) {
+            this.val = val;
+        }
+
+        public int getVal() {
+            return val;
+        }
     }
 
     public DataFiled() throws DataFiledException {
@@ -109,6 +118,10 @@ public abstract class DataFiled implements Comparable {
 
     @Override
     public String toString() throws DataFiledException {
+        throw new DataFiledException("Not Implemented");
+    }
+
+    public Types getType() throws DataFiledException {
         throw new DataFiledException("Not Implemented");
     }
 }

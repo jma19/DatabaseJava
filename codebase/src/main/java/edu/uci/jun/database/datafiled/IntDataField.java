@@ -16,6 +16,12 @@ public class IntDataField extends DataFiled {
         this.i = 0;
     }
 
+    @Override
+    public Types getType() throws DataFiledException {
+        return Types.INT;
+    }
+
+
     /**
      * Constructs an IntDataField with value i.
      *

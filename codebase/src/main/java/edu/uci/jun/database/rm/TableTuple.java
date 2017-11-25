@@ -9,6 +9,7 @@ public class TableTuple {
     private String fileName;
     private Boolean isSystemInfo;
 
+
     public byte[] getBytes() {
         return null;
     }

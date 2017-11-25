@@ -16,13 +16,14 @@ import java.util.List;
  * `size`: physical size (in bytes) of a record conforming to this schema
  */
 public class Schema {
+    private String tableName;
     private List<String> fields;
     private List<DataFiled> fieldTypes;
     private int size;
 
-    public Schema(List<String> fields, List<DataFiled> fieldTypes) {
+    public Schema(String tableName, List<String> fields, List<DataFiled> fieldTypes) {
         assert (fields.size() == fieldTypes.size());
-
+        this.tableName = tableName;
         this.fields = fields;
         this.fieldTypes = fieldTypes;
         this.size = 0;
@@ -30,6 +31,14 @@ public class Schema {
         for (DataFiled dt : fieldTypes) {
             this.size += dt.getSize();
         }
+    }
+
+    /**
+     *
+     * @return table name
+     */
+    public String getTableName() {
+        return tableName;
     }
 
     /**

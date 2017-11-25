@@ -16,6 +16,11 @@ public class FloatDataField extends DataFiled {
         this.f = 0.0f;
     }
 
+    @Override
+    public Types getType() throws DataFiledException {
+        return Types.FLOAT;
+    }
+
     /**
      * Construct an empty FloatDataField with value f.
      *

@@ -54,6 +54,10 @@ public class RecordBasedFileManager {
         return fileHandle.open();
     }
 
+    public void closeFile(String fileName) {
+        fileHandle.close();
+    }
+
     /**
      * @param fileName
      * @return
@@ -229,9 +233,10 @@ public class RecordBasedFileManager {
                     result.add(new StringDataField(bytes));
                 } else if (dataFiled instanceof FloatDataField) {
                     result.add(new FloatDataField(bytes));
-
                 } else if (dataFiled instanceof IntDataField) {
                     result.add(new IntDataField(bytes));
+                } else if (dataFiled instanceof BoolDataFiled) {
+                    result.add(new BoolDataFiled(bytes));
                 }
             }
             start = end;

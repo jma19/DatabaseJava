@@ -9,6 +9,12 @@ import java.nio.ByteBuffer;
 public class BoolDataFiled extends DataFiled {
     private boolean bool;
 
+
+    @Override
+    public Types getType() throws DataFiledException {
+        return Types.BOOL;
+    }
+
     /**
      * Construct an empty BoolDataFiled.
      */
