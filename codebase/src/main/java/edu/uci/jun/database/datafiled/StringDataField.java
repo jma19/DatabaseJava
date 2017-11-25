@@ -81,7 +81,7 @@ public class StringDataField extends DataFiled {
   @Override
   public int compareTo(Object obj) {
     if (this.getClass() != obj.getClass()) {
-      throw new DataFiledException("Invalid Comparsion");
+      throw new DataFiledException("Invalid Comparision");
     }
     StringDataField other = (StringDataField) obj;
     return this.getString().compareTo(other.getString());

@@ -3,6 +3,7 @@ package edu.uci.jun.database.rbf;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import java.util.Iterator;
 
 /**
@@ -12,6 +13,7 @@ public class FileHandle implements Iterable<Page>, Closeable {
 
     private RandomAccessFile randomAccessFile;
     private String fileName;
+    private boolean isOpen = false;
 
     public FileHandle(String fileName) {
         this.fileName = fileName;
@@ -20,6 +22,7 @@ public class FileHandle implements Iterable<Page>, Closeable {
     public boolean open() {
         try {
             this.randomAccessFile = new RandomAccessFile(fileName, "rw");
+            isOpen = true;
         } catch (IOException e) {
             throw new PageFileException("Could not open File: " + e.getMessage());
         }
@@ -29,9 +32,13 @@ public class FileHandle implements Iterable<Page>, Closeable {
     @Override
     public void close() throws IOException {
         this.randomAccessFile.close();
+        isOpen = false;
     }
 
     public byte[] readPage(int pageNum) {
+        if (!isOpen) {
+            throw new PageFileException("file is not open !!!");
+        }
         if (pageNum > getCurrentPageNum()) {
             throw new PageFileException(String.format("fail to read page due to outbound page number %d", pageNum));
         }
@@ -40,8 +47,11 @@ public class FileHandle implements Iterable<Page>, Closeable {
     }
 
     public boolean writePage(int pageNum, byte[] data) {
+        if (!isOpen) {
+            throw new PageFileException("file is not open !!!");
+        }
         Page page = new Page(randomAccessFile.getChannel(), pageNum, true);
-        page.writeBytes(pageNum * Page.pageSize, Page.pageSize, data);
+        page.writeBytes(0, Page.pageSize, data);
         return true;
     }
 
@@ -51,11 +61,17 @@ public class FileHandle implements Iterable<Page>, Closeable {
      * @return
      */
     public boolean appendPage(byte[] data) {
+        if (!isOpen) {
+            throw new PageFileException("file is not open !!!");
+        }
         int pageNum = getCurrentPageNum();
-        return writePage(pageNum + 1, data);
+        return writePage(pageNum, data);
     }
 
     public int getCurrentPageNum() {
+        if (!isOpen) {
+            throw new PageFileException("file is not open !!!");
+        }
         try {
             randomAccessFile.seek(randomAccessFile.length());
             long position = randomAccessFile.getFilePointer();
@@ -63,10 +79,6 @@ public class FileHandle implements Iterable<Page>, Closeable {
         } catch (IOException e) {
             throw new PageFileException("fail to get current page number," + e);
         }
-    }
-
-    public RandomAccessFile getRandomAccessFile() {
-        return randomAccessFile;
     }
 
     @Override
@@ -80,13 +92,17 @@ public class FileHandle implements Iterable<Page>, Closeable {
         @Override
         public boolean hasNext() {
             int currentPageNum = getCurrentPageNum();
-            return currPageNum <= currentPageNum;
+            return currPageNum < currentPageNum;
         }
 
         @Override
         public Page next() {
             return new Page(randomAccessFile.getChannel(), currPageNum, true);
         }
+    }
+
+    public FileChannel getFileChannel() {
+        return randomAccessFile.getChannel();
     }
 
 }
