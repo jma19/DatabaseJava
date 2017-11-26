@@ -33,6 +33,19 @@ public class Schema {
         }
     }
 
+    public Schema(List<String> fields, List<DataFiled> fieldTypes) {
+        assert (fields.size() == fieldTypes.size());
+        this.fields = fields;
+        this.fieldTypes = fieldTypes;
+        this.size = 0;
+
+        for (DataFiled dt : fieldTypes) {
+            this.size += dt.getSize();
+        }
+    }
+
+
+
     /**
      *
      * @return table name

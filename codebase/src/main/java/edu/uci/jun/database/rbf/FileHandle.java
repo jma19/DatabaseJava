@@ -79,7 +79,7 @@ public class FileHandle implements Iterable<Page>, Closeable {
         try {
             randomAccessFile.seek(randomAccessFile.length());
             long position = randomAccessFile.getFilePointer();
-            return (int) Math.ceil(position / Page.pageSize);
+            return (int) Math.ceil(position * 1.0 / Page.pageSize);
         } catch (IOException e) {
             throw new PageFileException("fail to get current page number," + e);
         }

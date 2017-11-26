@@ -27,10 +27,10 @@ public class RecordBasedFileManager {
      * @param fileName
      * @return
      */
-    public boolean createFile(String fileName) {
+    public boolean createFileIfNotExist(String fileName) {
         File file = new File(fileName);
         if (file.exists()) {
-            throw new PageFileException("fail to create file due to file exists");
+            return true;
         }
         try {
             file.createNewFile();
@@ -91,7 +91,7 @@ public class RecordBasedFileManager {
         byte flag = 0x10;
         int nullIndex = 0;
 
-        for (int i = 1; i < values.size(); i++) {
+        for (int i = 1; i <= values.size(); i++) {
             DataFiled item = values.get(i - 1);
             if (item == null) {
                 nullIndicator[nullIndex] |= flag;
@@ -109,8 +109,7 @@ public class RecordBasedFileManager {
 
 
         int currentPageNum = fileHandle.getCurrentPageNum();
-        Page page = new Page(fileHandle.getFileChannel(), currentPageNum - 1, true);
-
+        Page page = new Page(fileHandle.getFileChannel(), currentPageNum == 0 ? 0 : currentPageNum - 1, true);
         int costOfRecord = offset + Page.slotSize;
 
         if (costOfRecord > Page.pageSize) {
@@ -128,7 +127,7 @@ public class RecordBasedFileManager {
         page.updateSlotNum((short) (page.getSlotNum() + 1));
         page.updateFreeSpaceOffset((short) (freeSpaceOffset + bytesOfRecord.length));
         page.appendSlotToSlotSlotDict((short) freeSpaceOffset, (short) bytesOfRecord.length);
-        RecordID recordID = new RecordID(page.getPageNum(), page.getSlotNum());
+        RecordID recordID = new RecordID(page.getPageNum(), page.getSlotNum() - 1);
         return recordID;
     }
 
@@ -168,7 +167,7 @@ public class RecordBasedFileManager {
     }
 
     public short getNullIndicatorSize(List<DataFiled> values) {
-        return (short) Math.ceil(values.size() / 8);
+        return (short) Math.ceil(values.size() / 8.0);
     }
 
     /**
@@ -179,7 +178,7 @@ public class RecordBasedFileManager {
      * @return the Record referenced by rid that was removed
      * @throws DatabaseException if rid does not correspond to a valid record
      */
-    public Record deleteRecord(RecordID rid, Schema schema) throws DatabaseException {
+    public Record deleteRecord(RecordID rid, List<DataFiled> fieldTypes) throws DatabaseException {
         checkPageNum(rid);
         Page page = new Page(fileHandle.getFileChannel(), rid.getPageNum(), true);
         short recordOffset = page.getRecordOffset(rid.getEntryNumber());
@@ -187,7 +186,7 @@ public class RecordBasedFileManager {
             throw new DatabaseException("record does not exist");
         }
 
-        Record record = getRecord(rid, schema);
+        Record record = getRecord(rid, fieldTypes);
         page.updateRecordOffset(rid.getEntryNumber(), (short) (-1));
         return record;
     }
@@ -207,7 +206,7 @@ public class RecordBasedFileManager {
      * @return the Record referenced by rid
      * @throws DatabaseException if rid does not correspond to a valid record
      */
-    public Record getRecord(RecordID rid, Schema schema) throws DatabaseException {
+    public Record getRecord(RecordID rid, List<DataFiled> fieldTypes) throws DatabaseException {
         checkPageNum(rid);
         int pageNum = rid.getPageNum();
         Page page = new Page(fileHandle.getFileChannel(), pageNum, true);
@@ -219,8 +218,6 @@ public class RecordBasedFileManager {
 
         short recordLength = page.getRecordLength(rid.getEntryNumber());
         byte[] records = page.readBytes(recordOffset, recordLength);
-
-        List<DataFiled> fieldTypes = schema.getFieldTypes();
 
         short[] fieldOffset = getFieldOffset(fieldTypes, records);
 
@@ -260,17 +257,17 @@ public class RecordBasedFileManager {
     }
 
     /**
-     * @param dataFileds
+     * @param dataFields
      * @param record
      * @return filed offset for a given record
      */
-    private short[] getFieldOffset(List<DataFiled> dataFileds, byte[] record) {
-        short[] fieldOffSet = new short[dataFileds.size() + 1];
-        short nullIndicatorSize = getNullIndicatorSize(dataFileds);
+    private short[] getFieldOffset(List<DataFiled> dataFields, byte[] record) {
+        short[] fieldOffSet = new short[dataFields.size() + 1];
+        short nullIndicatorSize = getNullIndicatorSize(dataFields);
         int offset = nullIndicatorSize;
 
         for (int i = 0; i < fieldOffSet.length; i++) {
-            short temp = ByteBuffer.allocate(2).put(Arrays.copyOfRange(record, offset, offset + 2)).asShortBuffer().get();
+            short temp = ByteBuffer.wrap(Arrays.copyOfRange(record, offset, offset + 2)).getShort();
             fieldOffSet[i] = temp;
             offset += 2;
         }

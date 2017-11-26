@@ -11,7 +11,6 @@ import edu.uci.jun.database.rbf.RecordID;
 import edu.uci.jun.database.table.Schema;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,15 +39,15 @@ public class RelationManager {
         RecordBasedFileManager recordBasedFileManager = new RecordBasedFileManager();
 
         if (!recordBasedFileManager.isExist(TABLES_TABLE)) {
-            recordBasedFileManager.createFile(TABLES_TABLE);
+            recordBasedFileManager.createFileIfNotExist(TABLES_TABLE);
         }
 
         if (!recordBasedFileManager.isExist(COLUMNS_TABLE)) {
-            recordBasedFileManager.createFile(COLUMNS_TABLE);
+            recordBasedFileManager.createFileIfNotExist(COLUMNS_TABLE);
         }
 
         if (!recordBasedFileManager.isExist(TABLES_ID)) {
-            recordBasedFileManager.createFile(TABLES_ID);
+            recordBasedFileManager.createFileIfNotExist(TABLES_ID);
         }
         int latestTableId = getLatestTableId();
 
@@ -107,11 +106,13 @@ public class RelationManager {
         updateLatestTableId(tableId);
 
         //update the table scheme
-        List<DataFiled> tableScheme = Lists.newArrayList();
-        tableScheme.add(new IntDataField(tableId));
-        tableScheme.add(new StringDataField(schema.getTableName(), 50));
-        tableScheme.add(new StringDataField(schema.getTableName() + ".tab", 50));
-        tableScheme.add(new BoolDataFiled(false));
+        List<DataFiled> tableScheme = Lists.newArrayList(
+                new IntDataField(tableId),
+                new StringDataField(schema.getTableName(), 50),
+                new StringDataField(schema.getTableName() + ".tab", 50),
+                new BoolDataFiled(false)
+        );
+
         recordBasedFileManager.addRecord(tableScheme);
         recordBasedFileManager.closeFile(TABLES_TABLE);
 
@@ -120,20 +121,14 @@ public class RelationManager {
         List<String> fieldNames = schema.getFieldNames();
         List<DataFiled> fieldTypes = schema.getFieldTypes();
         for (int i = 0; i < fieldNames.size(); i++) {
-            List<DataFiled> columnScheme = Lists.newArrayList();
-            //table id
-            columnScheme.add(new IntDataField(tableId));
-            //column name
-            columnScheme.add(new StringDataField(fieldNames.get(i)));
-            //column type
-            columnScheme.add(new IntDataField(fieldTypes.get(i).getType().getVal()));
-            //column length
-            columnScheme.add(new IntDataField(fieldTypes.get(i).getSize()));
-            //column position
-            columnScheme.add(new IntDataField(i));
-            //is flag
-            columnScheme.add(new BoolDataFiled(false));
-
+            List<DataFiled> columnScheme = Lists.newArrayList(
+                    new IntDataField(tableId),
+                    new StringDataField(fieldNames.get(i)),
+                    new IntDataField(fieldTypes.get(i).getType().getVal()),
+                    new IntDataField(fieldTypes.get(i).getSize()),
+                    new IntDataField(i),
+                    new BoolDataFiled(false)
+            );
             recordBasedFileManager.addRecord(columnScheme);
         }
         recordBasedFileManager.closeFile(COLUMNS_TABLE);
@@ -141,11 +136,13 @@ public class RelationManager {
 
 
     public Schema getTable(String tableName) {
-
+        RecordBasedFileManager recordBasedFileManager = new RecordBasedFileManager();
+        recordBasedFileManager.openFile(TABLES_TABLE);
         return null;
     }
 
     public void deleteTable(String tableName) {
+
     }
 
     private RecordID insertCatalogTuple(String tableName, byte[] data) {

@@ -209,7 +209,7 @@ public class Page {
      */
     public short getSlotNum() {
         byte[] slotNum = this.readBytes(slotNumOffset, 2);
-        return ByteBuffer.wrap(slotNum).getShort();
+        return ByteBuffer.wrap(slotNum).asShortBuffer().get();
     }
 
     /**
@@ -217,7 +217,7 @@ public class Page {
      */
     public int getFreeSpaceOffset() {
         byte[] freeSpaceSpace = this.readBytes(freeSpaceOffset, 2);
-        return ByteBuffer.wrap(freeSpaceSpace).getInt();
+        return ByteBuffer.wrap(freeSpaceSpace).getShort();
     }
 
     /**
@@ -237,16 +237,17 @@ public class Page {
 
     /**
      * update the record offset for a given slot id
-     * @param slotId
+     *
+     * @param slotId start from 0
      * @param val
      */
-    public void updateRecordOffset(int slotId, short val){
-        int start = pageSize - freeOffsetSize - slotNumSize - slotId * slotSize;
+    public void updateRecordOffset(int slotId, short val) {
+        int start = pageSize - freeOffsetSize - slotNumSize - (slotId + 1) * slotSize;
         this.writeBytes(start, recordOffsetSize, ByteBuffer.allocate(recordOffsetSize).putShort(val).array());
     }
 
     /**
-     * @param slotId
+     * @param slotId start from 0
      * @return record offset for a given slot id
      * @throws DatabaseException
      */
@@ -255,8 +256,8 @@ public class Page {
         if (slotId >= slotNum || slotId < 0) {
             throw new DatabaseException("target slot number outbound");
         }
-        int start = pageSize - freeOffsetSize - slotNumSize - slotId * slotSize;
-        return ByteBuffer.allocate(2).put(this.readBytes(start, 2)).asShortBuffer().get();
+        int start = pageSize - freeOffsetSize - slotNumSize - (slotId + 1) * slotSize;
+        return ByteBuffer.wrap(this.readBytes(start, 2)).getShort();
     }
 
     /**
@@ -264,8 +265,8 @@ public class Page {
      * @return record length for a given slot id
      */
     public short getRecordLength(int slotId) {
-        int start = pageSize - freeOffsetSize - slotNumSize - slotId * slotSize + recordOffsetSize;
-        return ByteBuffer.allocate(2).put(this.readBytes(start, 2)).asShortBuffer().get();
+        int start = pageSize - freeOffsetSize - slotNumSize - (slotId + 1) * slotSize + recordOffsetSize;
+        return ByteBuffer.wrap(this.readBytes(start, 2)).getShort();
     }
 
     /**
@@ -275,7 +276,7 @@ public class Page {
      * @param lengthOfRecord
      */
     public void appendSlotToSlotSlotDict(short offsetOfRecord, short lengthOfRecord) {
-        int start = pageSize - slotNumSize - freeOffsetSize - getSlotNum() * getSlotNum() - slotSize;
+        int start = pageSize - slotNumSize - freeOffsetSize - getSlotNum() * slotSize;
         this.writeBytes(start, recordOffsetSize, ByteBuffer.allocate(freeOffsetSize).putShort(offsetOfRecord).array());
         this.writeBytes(start + recordOffsetSize, recordLengthSize, ByteBuffer.allocate(recordLengthSize).putShort(lengthOfRecord).array());
     }

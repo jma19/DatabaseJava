@@ -356,7 +356,7 @@ public class Table implements Iterable<Record>, Closeable {
             }
         }
 
-        this.schema = new Schema(fieldNames, fieldTypes);
+        this.schema = new Schema("", fieldNames, fieldTypes);
 
     }
 
