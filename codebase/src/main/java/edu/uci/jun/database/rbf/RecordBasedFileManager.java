@@ -212,6 +212,11 @@ public class RecordBasedFileManager {
         int pageNum = rid.getPageNum();
         Page page = new Page(fileHandle.getFileChannel(), pageNum, true);
         short recordOffset = page.getRecordOffset(rid.getEntryNumber());
+
+        if (recordOffset == -1) {
+            return null;
+        }
+
         short recordLength = page.getRecordLength(rid.getEntryNumber());
         byte[] records = page.readBytes(recordOffset, recordLength);
 
@@ -288,8 +293,16 @@ public class RecordBasedFileManager {
         return null;
     }
 
-    public void scan() {
 
+    public RecordIterator scan(List<DataFiled> recordDesciptor) {
+        return null;
+    }
+
+    /**
+     * @return FileHandle
+     */
+    public FileHandle getFileHandle() {
+        return this.fileHandle;
     }
 
 }

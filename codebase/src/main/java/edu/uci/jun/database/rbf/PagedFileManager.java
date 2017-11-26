@@ -63,11 +63,7 @@ public class PagedFileManager {
         if (fileHandle == null) {
             return false;
         }
-        try {
-            fileHandle.close();
-        } catch (IOException e) {
-            throw new PageFileException(String.format("fail to close file %s, error = %s", fileName, e));
-        }
+        fileHandle.close();
         return true;
     }
 
