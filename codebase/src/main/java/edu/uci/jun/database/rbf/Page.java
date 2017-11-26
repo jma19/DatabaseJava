@@ -287,4 +287,13 @@ public class Page {
     public void updateSlotNum(short slotNumber) {
         this.writeBytes(slotNumOffset, slotNumSize, ByteBuffer.allocate(slotNumSize).putShort(slotNumber).array());
     }
+
+    @Override
+    public String toString() {
+        return "Page{" +
+                "pageNum=" + pageNum +
+                "slotNum=" + getSlotNum() +
+                ", durable=" + durable +
+                '}';
+    }
 }

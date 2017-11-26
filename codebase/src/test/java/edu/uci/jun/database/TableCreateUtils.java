@@ -15,8 +15,10 @@ import java.util.Random;
 public class TableCreateUtils {
     private static Random random = new Random();
 
+    public static final String tableName = "student";
+
     public static Schema getSchema() {
-        return new Schema("student", Lists.newArrayList("name", "id", "age"),
+        return new Schema(tableName, Lists.newArrayList("name", "id", "age"),
                 Lists.newArrayList(new StringDataField(50), new IntDataField(), new IntDataField()));
     }
 

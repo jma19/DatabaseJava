@@ -2,7 +2,6 @@ package edu.uci.jun.database.rbf;
 
 import edu.uci.jun.database.DatabaseException;
 import edu.uci.jun.database.datafiled.DataFiled;
-import edu.uci.jun.database.table.Schema;
 
 import java.util.Iterator;
 import java.util.List;
@@ -11,50 +10,53 @@ import java.util.List;
  * An implementation of Iterator that takes in a RecordID iterator provides iteration over Records
  */
 public class RecordIterator implements Iterator<Record> {
-    private static int currentPageNum = 0;
-    private Iterator<RecordID> recordIDIter;
+    private int currentPageNum = 0;
     private RecordBasedFileManager recordBasedFileManager;
     private List<DataFiled> fieldTypes;
     private Page currentPage;
     private int currentSlotNum;
 
-    public RecordIterator(String tableName, List<DataFiled> fieldTypes, Iterator<RecordID> recIDIter) {
-        this.recordBasedFileManager = new RecordBasedFileManager();
-        this.recordIDIter = recIDIter;
-        this.recordBasedFileManager.openFile(tableName + ".tab");
+    public RecordIterator(RecordBasedFileManager recordBasedFileManager, List<DataFiled> fieldTypes) {
+        this.recordBasedFileManager = recordBasedFileManager;
         this.fieldTypes = fieldTypes;
-        this.currentPage = new Page(recordBasedFileManager.getFileHandle().getFileChannel(), currentPageNum, false);
+        this.currentPage = new Page(recordBasedFileManager.getFileHandle().getFileChannel(), currentPageNum, true);
         this.currentSlotNum = 0;
     }
 
+    /**
+     * @return
+     */
     @Override
     public boolean hasNext() {
-        return currentPageNum >= recordBasedFileManager.getFileHandle().getCurrentPageNum();
+        return currentPageNum < recordBasedFileManager.getFileHandle().getCurrentPageNum()
+                && currentSlotNum < currentPage.getSlotNum();
     }
 
+
+    /**
+     * @return next record which is not null
+     */
     @Override
     public Record next() {
         short slotNum = currentPage.getSlotNum();
         Record record = null;
         while (currentSlotNum < slotNum) {
-            RecordID recordID = new RecordID(currentPageNum, currentPageNum);
+            RecordID recordID = new RecordID(currentPageNum, currentSlotNum);
             try {
                 record = recordBasedFileManager.getRecord(recordID, fieldTypes);
                 currentSlotNum++;
+                if (currentSlotNum == slotNum) {
+                    currentPageNum++;
+                    currentPage = new Page(recordBasedFileManager.getFileHandle().getFileChannel(), currentPageNum, false);
+                    currentSlotNum = 0;
+                }
                 if (record != null) {
                     return record;
                 }
             } catch (DatabaseException e) {
                 e.printStackTrace();
             }
-            if (currentPageNum == slotNum) {
-                currentPageNum++;
-                if (currentPageNum == recordBasedFileManager.getFileHandle().getCurrentPageNum()) {
-                    return null;
-                }
-                currentPage = new Page(recordBasedFileManager.getFileHandle().getFileChannel(), currentPageNum, false);
-                currentSlotNum = 0;
-            }
+
         }
         return record;
     }

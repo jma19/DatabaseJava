@@ -43,7 +43,6 @@ public class FileHandleTest {
         byte[] data = new byte[Page.pageSize];
         assertTrue(fileHandle.appendPage(data));
         int currentPageNum = fileHandle.getCurrentPageNum();
-        System.out.println(currentPageNum);
         assertTrue(currentPageNum == preCurrentNumber + 1);
     }
 }
