@@ -1,17 +1,19 @@
 package edu.uci.jun.database.rm;
 
 import com.google.common.collect.Lists;
+import com.oracle.tools.packager.Log;
 import edu.uci.jun.database.DatabaseException;
-import edu.uci.jun.database.datafiled.BoolDataFiled;
-import edu.uci.jun.database.datafiled.DataFiled;
-import edu.uci.jun.database.datafiled.IntDataField;
-import edu.uci.jun.database.datafiled.StringDataField;
+import edu.uci.jun.database.datafiled.*;
+import edu.uci.jun.database.query.QueryPlan;
+import edu.uci.jun.database.rbf.Record;
 import edu.uci.jun.database.rbf.RecordBasedFileManager;
-import edu.uci.jun.database.rbf.RecordID;
+import edu.uci.jun.database.rbf.RecordIterator;
 import edu.uci.jun.database.table.Schema;
 
 import java.io.*;
-import java.util.List;
+import java.util.*;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Created by junm5 on 11/22/17.
@@ -137,55 +139,91 @@ public class RelationManager {
 
     public Schema getTable(String tableName) {
         RecordBasedFileManager recordBasedFileManager = new RecordBasedFileManager();
+        //first get table_id
         recordBasedFileManager.openFile(TABLES_TABLE);
-        return null;
+        Schema systemSchemeForTables = getSystemSchemeForTables();
+
+        RecordIterator scan = recordBasedFileManager.scan(systemSchemeForTables, "TABLE_NAME", QueryPlan.PredicateOperator.EQUALS, new StringDataField(tableName), null);
+
+        if (!scan.hasNext()) {
+            Log.debug(String.format("the table %s doesn't exists..", tableName));
+            return null;
+        }
+
+        IntDataField tableId = null;
+        while (scan.hasNext()) {
+            Record next = scan.next();
+            tableId = (IntDataField) next.getValues().get(0);
+            break;
+        }
+        checkNotNull(tableId, "table ID should not be null!!");
+        Schema systemTupleForColumnTables = getSystemTupleForColumnTables();
+        RecordIterator columnIterator = recordBasedFileManager.scan(systemTupleForColumnTables, "TABLE_ID", QueryPlan.PredicateOperator.EQUALS, tableId, null);
+
+        //then get table columns
+        Map<Integer, Attribute> attriPosMap = new HashMap<>();
+
+        while (columnIterator.hasNext()) {
+            Record record = columnIterator.next();
+            List<DataFiled> values = record.getValues();
+            String columnName = ((StringDataField) values.get(1)).getString();
+            int type = ((IntDataField) values.get(2)).getInt();
+            int length = ((IntDataField) values.get(3)).getInt();
+            int position = ((IntDataField) values.get(4)).getInt();
+            attriPosMap.put(position, new Attribute(columnName, DataFiled.Types.valueOf(type), length));
+        }
+
+        List<String> filedNames = new ArrayList<>();
+        List<DataFiled> dataFileds = new ArrayList<>();
+
+        for (int i = 0; i < attriPosMap.size(); i++) {
+            Attribute attribute = attriPosMap.get(i);
+            filedNames.add(attribute.getName());
+            DataFiled.Types type = attribute.getType();
+            if (type.equals(DataFiled.Types.BOOL)) {
+                dataFileds.add(new BoolDataFiled());
+            } else if (type.equals(DataFiled.Types.FLOAT)) {
+                dataFileds.add(new FloatDataField());
+            } else if (type.equals(DataFiled.Types.INT)) {
+                dataFileds.add(new IntDataField());
+            } else if (type.equals(DataFiled.Types.STRING)) {
+                dataFileds.add(new StringDataField());
+            }
+        }
+        return new Schema(tableName, filedNames, dataFileds);
     }
 
     public void deleteTable(String tableName) {
 
     }
 
-    private RecordID insertCatalogTuple(String tableName, byte[] data) {
-
-        /**
-         *    FileHandle fileHandle;
-         vector<Attribute> recordDescriptor;
-
-         if (rbfm->openFile(tableName, fileHandle) == FAIL) {
-         return FAIL;
-         }
-
-         prepareRecordDescriptor(tableName, recordDescriptor);
-
-         if (rbfm->insertRecord(fileHandle, recordDescriptor, data, rid) == FAIL) {
-         return FAIL;
-         }
-
-         rbfm->closeFile(fileHandle);
-
-         return SUCCESS;
-         */
-        //
-
-        return null;
-
-    }
-
-    public void scan(String tableName, String conditionAttribute) {
+    /**
+     * RC RecordBasedFileManager::scan(FileHandle &fileHandle,
+     * const vector<Attribute> &recordDescriptor,
+     * const string &conditionAttribute,
+     * const CompOp compOp,
+     * const void *value,
+     * const vector<string> &attributeNames,
+     * RBFM_ScanIterator &rbfm_ScanIterator)
+     *
+     * @param tableName
+     * @param predicateOperator
+     * @param conditionAttribute
+     */
+    public void scan(String tableName, QueryPlan.PredicateOperator predicateOperator, String conditionAttribute) {
 
     }
 
 
     private Schema getSystemSchemeForTables() {
-
         List<String> fieldNames = Lists.newArrayList("TABLE_ID", "TABLE_NAME", "FILE_NAME", "SYSTEM_FLAG");
         List<DataFiled> values = Lists.newArrayList(new IntDataField(), new StringDataField(50), new StringDataField(50), new BoolDataFiled(true));
         return new Schema(TABLES_TABLE, fieldNames, values);
     }
 
     private Schema getSystemTupleForColumnTables() {
-        List<String> fieldNames = Lists.newArrayList("TABLE_ID", "COLUMN_NAME", "COLUMN_TYPE", "COLUMN_TYPE", "COLUMN_LENGTH", "COLUMN_POSITION", "SYSTEM_FLAG");
-        List<DataFiled> values = Lists.newArrayList(new IntDataField(), new StringDataField(50), new StringDataField(50),
+        List<String> fieldNames = Lists.newArrayList("TABLE_ID", "COLUMN_NAME", "COLUMN_TYPE", "COLUMN_LENGTH", "COLUMN_POSITION", "SYSTEM_FLAG");
+        List<DataFiled> values = Lists.newArrayList(new IntDataField(), new StringDataField(50),
                 new IntDataField(), new IntDataField(), new BoolDataFiled(true));
         return new Schema(COLUMNS_TABLE, fieldNames, values);
     }

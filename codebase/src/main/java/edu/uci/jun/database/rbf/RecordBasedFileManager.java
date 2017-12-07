@@ -2,6 +2,7 @@ package edu.uci.jun.database.rbf;
 
 import edu.uci.jun.database.DatabaseException;
 import edu.uci.jun.database.datafiled.*;
+import edu.uci.jun.database.query.QueryPlan;
 import edu.uci.jun.database.table.Schema;
 
 import java.io.File;
@@ -15,7 +16,6 @@ import java.util.List;
  * Created by junm5 on 11/15/17.
  */
 public class RecordBasedFileManager {
-    private RecordIterator recordIterator;
     private FileHandle fileHandle;
 
     public RecordBasedFileManager() {
@@ -215,12 +215,9 @@ public class RecordBasedFileManager {
         if (recordOffset == -1) {
             return null;
         }
-
         short recordLength = page.getRecordLength(rid.getEntryNumber());
         byte[] records = page.readBytes(recordOffset, recordLength);
-
         short[] fieldOffset = getFieldOffset(fieldTypes, records);
-
         short start = fieldOffset[0];
         List<DataFiled> result = new ArrayList<>();
 
@@ -291,8 +288,22 @@ public class RecordBasedFileManager {
     }
 
 
-    public RecordIterator scan(List<DataFiled> recordDesciptor) {
-        return null;
+    /**
+     * @param scheme
+     * @param filedName
+     * @param predicateOperator
+     * @param data
+     * @param targetFields
+     * @return RecordIterator by given condition
+     */
+    public RecordIterator scan(Schema scheme, String filedName,
+                               QueryPlan.PredicateOperator predicateOperator,
+                               DataFiled data,
+                               List<String> targetFields) {
+        return new RecordIterator(this, scheme)
+                .setPredicateOperator(predicateOperator)
+                .setComData(data)
+                .setTargetFields(targetFields);
     }
 
     /**

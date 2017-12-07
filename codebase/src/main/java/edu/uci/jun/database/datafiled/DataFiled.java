@@ -25,6 +25,15 @@ public abstract class DataFiled implements Comparable {
         public int getVal() {
             return val;
         }
+
+        public static Types valueOf(int type) {
+            for (Types types : Types.values()) {
+                if (type == types.val) {
+                    return types;
+                }
+            }
+            return null;
+        }
     }
 
     public DataFiled() throws DataFiledException {

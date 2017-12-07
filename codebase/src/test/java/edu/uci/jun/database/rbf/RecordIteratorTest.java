@@ -19,6 +19,10 @@ public class RecordIteratorTest {
     private RecordBasedFileManager recordBasedFileManager;
     private static final int recordNum = 1000;
 
+    /**
+     * generate 1000 data records, add record into data base
+     * @throws Exception
+     */
     @Before
     public void setUp() throws Exception {
         recordBasedFileManager = new RecordBasedFileManager();
@@ -30,7 +34,7 @@ public class RecordIteratorTest {
             RecordID recordID = recordBasedFileManager.addRecord(values);
             assertTrue(recordID != null);
         }
-        recordIterator = new RecordIterator(recordBasedFileManager, TableCreateUtils.getSchema().getFieldTypes());
+        recordIterator = new RecordIterator(recordBasedFileManager, TableCreateUtils.getSchema());
         System.out.println(String.format("page number ---> %s", recordBasedFileManager.getFileHandle().getCurrentPageNum()));
     }
 
