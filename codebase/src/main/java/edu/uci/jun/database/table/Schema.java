@@ -44,8 +44,6 @@ public class Schema {
         }
     }
 
-
-
     /**
      *
      * @return table name

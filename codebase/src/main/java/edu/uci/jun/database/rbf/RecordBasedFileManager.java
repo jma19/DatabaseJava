@@ -35,7 +35,7 @@ public class RecordBasedFileManager {
         try {
             file.createNewFile();
         } catch (IOException e) {
-            throw new PageFileException("fail to create file");
+            throw new PageFileException("fail to create file", e);
         }
         return true;
     }

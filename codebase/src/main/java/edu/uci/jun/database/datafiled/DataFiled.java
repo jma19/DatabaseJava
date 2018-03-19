@@ -15,20 +15,20 @@ public abstract class DataFiled implements Comparable {
      * An enum with the current supported types.
      */
     public enum Types {
-        INT(1), FLOAT(2), STRING(3), BOOL(4);
-        int val;
+        INT("Int"), FLOAT("Float"), STRING("String"), BOOL("Bool");
+        String val;
 
-        Types(int val) {
+        Types(String val) {
             this.val = val;
         }
 
-        public int getVal() {
+        public String getVal() {
             return val;
         }
 
-        public static Types valueOf(int type) {
+        public static Types get(String type) {
             for (Types types : Types.values()) {
-                if (type == types.val) {
+                if (type.equals(types.val)) {
                     return types;
                 }
             }

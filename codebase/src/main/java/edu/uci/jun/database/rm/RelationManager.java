@@ -9,81 +9,136 @@ import edu.uci.jun.database.rbf.Record;
 import edu.uci.jun.database.rbf.RecordBasedFileManager;
 import edu.uci.jun.database.rbf.RecordIterator;
 import edu.uci.jun.database.table.Schema;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static edu.uci.jun.database.datafiled.DataFiled.Types.*;
 
 /**
+ * 1. catalog stores table descriptions, and column descriptions
+ * 2. for table descriptions, we have tableId, table name, file name, sys flag
+ * 3. for column descriptions, we have
  * Created by junm5 on 11/22/17.
  */
 public class RelationManager {
     private final static RelationManager instance = new RelationManager();
 
+    public final static String CATALOG_PREFIX = "catalog";
+    /**
+     * The Constant LOGGER.
+     */
+    private static final Logger logger = LogManager.getLogger(RelationManager.class);
+
+
+    private RelationManager() {
+        init();
+    }
+
+    /***
+     * when initiate RelationManager, check existence of the catalog dir
+     */
+    private void init() {
+        File dir = new File(CATALOG_PREFIX);
+        if (!dir.exists()) {
+            dir.mkdir();
+        }
+    }
+
     public static RelationManager getInstance() {
         return instance;
     }
 
-    //file for storing table information
-    private final static String TABLES_TABLE = "tables.tab";
+    //file for storing table info
+    // rmation
+    public final static String TABLES_TABLE = CATALOG_PREFIX + "/tables.tab";
     //file for storing columns of a table
-    private final static String COLUMNS_TABLE = "columns.tab";
+    public final static String COLUMNS_TABLE = CATALOG_PREFIX + "/columns.tab";
     //file for storing latest id
-    private final static String TABLES_ID = "tablesId.tab";
+    public final static String TABLES_ID = CATALOG_PREFIX + "/tablesId.tab";
 
     private final static int EMPTY_TABLE_ID = -1;
 
-    /**
-     * create system catalog includes: tables, columns
+    /***
+     * create system catalog for table, and columns
+     * @throws DatabaseException
      */
     public void createCatalog() throws DatabaseException {
+        logger.debug("check catalog file....");
         RecordBasedFileManager recordBasedFileManager = new RecordBasedFileManager();
 
         if (!recordBasedFileManager.isExist(TABLES_TABLE)) {
+            logger.debug("table catalog doesn't exist, try to create");
             recordBasedFileManager.createFileIfNotExist(TABLES_TABLE);
+            logger.debug("create table catalog successfully...");
         }
 
         if (!recordBasedFileManager.isExist(COLUMNS_TABLE)) {
+            logger.debug("column catalog doesn't exist, try to create");
             recordBasedFileManager.createFileIfNotExist(COLUMNS_TABLE);
+            logger.debug("create column catalog successfully...");
         }
 
         if (!recordBasedFileManager.isExist(TABLES_ID)) {
+            logger.debug("id catalog doesn't exist, try to create");
             recordBasedFileManager.createFileIfNotExist(TABLES_ID);
-        }
-        int latestTableId = getLatestTableId();
-
-        if (latestTableId != EMPTY_TABLE_ID) {
-            return;
+            logger.debug("create id catalog successfully...");
         }
 
-        recordBasedFileManager.openFile(TABLES_TABLE);
-        Schema systemSchemeForTables = getSystemSchemeForTables();
         try {
-            recordBasedFileManager.addRecord(systemSchemeForTables.getFieldTypes());
-        } catch (DatabaseException e) {
-            throw new DatabaseException("fail to create tables scheme");
-        }
-        recordBasedFileManager.closeFile(TABLES_TABLE);
+            int latestTableId = getLatestTableId();
+            if (latestTableId != EMPTY_TABLE_ID) {
+                return;
+            }
+            recordBasedFileManager.openFile(TABLES_TABLE);
+            Schema systemSchemeForTables = getSystemSchemeForTables();
+            try {
+                recordBasedFileManager.addRecord(systemSchemeForTables.getFieldTypes());
+            } catch (DatabaseException e) {
+                throw new DatabaseException("fail to create tables scheme");
+            }
+            recordBasedFileManager.closeFile(TABLES_TABLE);
 
-        recordBasedFileManager.openFile(COLUMNS_TABLE);
-        Schema systemTupleForColumnTables = getSystemTupleForColumnTables();
-        try {
-            recordBasedFileManager.addRecord(systemTupleForColumnTables.getFieldTypes());
-        } catch (DatabaseException e) {
-            throw new DatabaseException("fail to create column table scheme");
+            recordBasedFileManager.openFile(COLUMNS_TABLE);
+            List<List<DataFiled>> tuplesForColumnsTable = getTuplesForColumnsTable();
+            try {
+                for (List<DataFiled> dataFileds : tuplesForColumnsTable)
+                    recordBasedFileManager.addRecord(dataFileds);
+            } catch (DatabaseException e) {
+                throw new DatabaseException("fail to create column table scheme");
+            }
+            recordBasedFileManager.closeFile(COLUMNS_TABLE);
+            recordBasedFileManager.openFile(TABLES_ID);
+            updateLatestTableId(0);
+        } catch (Exception exp) {
+            clearAllCatalogs();
         }
-        recordBasedFileManager.closeFile(COLUMNS_TABLE);
     }
 
-    private int getLatestTableId() {
+    /**
+     * delete all catalogs
+     */
+    public void clearAllCatalogs() {
+        RecordBasedFileManager recordBasedFileManager = new RecordBasedFileManager();
+        recordBasedFileManager.destroyFile(TABLES_TABLE);
+        recordBasedFileManager.destroyFile(COLUMNS_TABLE);
+        recordBasedFileManager.destroyFile(TABLES_ID);
+    }
+
+
+    private int getLatestTableId() throws DatabaseException {
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(TABLES_ID))) {
             String data = bufferedReader.readLine();
             return data == null ? EMPTY_TABLE_ID : Integer.valueOf(data);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new DatabaseException("fail to get latest table id", e);
         }
-        return EMPTY_TABLE_ID;
     }
 
     private void updateLatestTableId(int tableId) throws DatabaseException {
@@ -102,8 +157,15 @@ public class RelationManager {
      * @param schema
      */
     public void createTable(Schema schema) throws DatabaseException {
+        checkNotNull(schema);
+        checkNotNull(schema.getTableName(), "table name should not be null");
+        checkNotNull(schema.getFieldTypes(), "filed type should not be null");
+        checkNotNull(schema.getTableName(), "table name should not be null");
         RecordBasedFileManager recordBasedFileManager = new RecordBasedFileManager();
         recordBasedFileManager.openFile(TABLES_TABLE);
+
+        //Todo add check for table name
+
         int tableId = getLatestTableId() + 1;
         updateLatestTableId(tableId);
 
@@ -126,7 +188,7 @@ public class RelationManager {
             List<DataFiled> columnScheme = Lists.newArrayList(
                     new IntDataField(tableId),
                     new StringDataField(fieldNames.get(i)),
-                    new IntDataField(fieldTypes.get(i).getType().getVal()),
+                    new StringDataField(fieldTypes.get(i).getType().getVal()),
                     new IntDataField(fieldTypes.get(i).getSize()),
                     new IntDataField(i),
                     new BoolDataFiled(false)
@@ -135,6 +197,7 @@ public class RelationManager {
         }
         recordBasedFileManager.closeFile(COLUMNS_TABLE);
     }
+
 
 
     public Schema getTable(String tableName) {
@@ -157,7 +220,7 @@ public class RelationManager {
             break;
         }
         checkNotNull(tableId, "table ID should not be null!!");
-        Schema systemTupleForColumnTables = getSystemTupleForColumnTables();
+        Schema systemTupleForColumnTables = getSystemSchemeForColumnsTable();
         RecordIterator columnIterator = recordBasedFileManager.scan(systemTupleForColumnTables, "TABLE_ID", QueryPlan.PredicateOperator.EQUALS, tableId, null);
 
         //then get table columns
@@ -166,11 +229,13 @@ public class RelationManager {
         while (columnIterator.hasNext()) {
             Record record = columnIterator.next();
             List<DataFiled> values = record.getValues();
+
             String columnName = ((StringDataField) values.get(1)).getString();
-            int type = ((IntDataField) values.get(2)).getInt();
+            String type = ((StringDataField) values.get(2)).getString();
             int length = ((IntDataField) values.get(3)).getInt();
             int position = ((IntDataField) values.get(4)).getInt();
-            attriPosMap.put(position, new Attribute(columnName, DataFiled.Types.valueOf(type), length));
+
+            attriPosMap.put(position, new Attribute(columnName, DataFiled.Types.get(type), length));
         }
 
         List<String> filedNames = new ArrayList<>();
@@ -184,10 +249,10 @@ public class RelationManager {
                 dataFileds.add(new BoolDataFiled());
             } else if (type.equals(DataFiled.Types.FLOAT)) {
                 dataFileds.add(new FloatDataField());
-            } else if (type.equals(DataFiled.Types.INT)) {
+            } else if (type.equals(INT)) {
                 dataFileds.add(new IntDataField());
             } else if (type.equals(DataFiled.Types.STRING)) {
-                dataFileds.add(new StringDataField());
+                dataFileds.add(new StringDataField(attribute.getLength()));
             }
         }
         return new Schema(tableName, filedNames, dataFileds);
@@ -217,13 +282,34 @@ public class RelationManager {
 
     private Schema getSystemSchemeForTables() {
         List<String> fieldNames = Lists.newArrayList("TABLE_ID", "TABLE_NAME", "FILE_NAME", "SYSTEM_FLAG");
-        List<DataFiled> values = Lists.newArrayList(new IntDataField(), new StringDataField(50), new StringDataField(50), new BoolDataFiled(true));
+        List<DataFiled> values = Lists.newArrayList(new IntDataField(0), new StringDataField("System table"), new StringDataField("NULL"), new BoolDataFiled(true));
         return new Schema(TABLES_TABLE, fieldNames, values);
     }
 
-    private Schema getSystemTupleForColumnTables() {
+
+    private List<List<DataFiled>> getTuplesForColumnsTable() {
+        List<List<DataFiled>> cols = Lists.newArrayList();
+        cols.add(Lists.newArrayList(new IntDataField(0), new StringDataField("table id"), new StringDataField(INT.getVal()),
+                new IntDataField(50), new IntDataField(0), new BoolDataFiled(true)));
+
+        cols.add(Lists.newArrayList(new IntDataField(0), new StringDataField("column name"), new StringDataField(STRING.getVal()),
+                new IntDataField(50), new IntDataField(1), new BoolDataFiled(true)));
+
+        cols.add(Lists.newArrayList(new IntDataField(0), new StringDataField("column type"), new StringDataField(STRING.getVal()),
+                new IntDataField(50), new IntDataField(2), new BoolDataFiled(true)));
+
+        cols.add(Lists.newArrayList(new IntDataField(0), new StringDataField("column length"), new StringDataField(INT.getVal()),
+                new IntDataField(50), new IntDataField(3), new BoolDataFiled(true)));
+
+        cols.add(Lists.newArrayList(new IntDataField(0), new StringDataField("system flag"), new StringDataField(BOOL.getVal()),
+                new IntDataField(50), new IntDataField(4), new BoolDataFiled(true)));
+
+        return cols;
+    }
+
+    private Schema getSystemSchemeForColumnsTable() {
         List<String> fieldNames = Lists.newArrayList("TABLE_ID", "COLUMN_NAME", "COLUMN_TYPE", "COLUMN_LENGTH", "COLUMN_POSITION", "SYSTEM_FLAG");
-        List<DataFiled> values = Lists.newArrayList(new IntDataField(), new StringDataField(50),
+        List<DataFiled> values = Lists.newArrayList(new IntDataField(0), new StringDataField("system default column name"), new StringDataField(),
                 new IntDataField(), new IntDataField(), new BoolDataFiled(true));
         return new Schema(COLUMNS_TABLE, fieldNames, values);
     }

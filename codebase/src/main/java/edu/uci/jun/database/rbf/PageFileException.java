@@ -8,6 +8,10 @@ public class PageFileException extends RuntimeException {
     public PageFileException() {
     }
 
+    public PageFileException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
     public PageFileException(String message) {
         super(message);
     }
